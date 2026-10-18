@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Shortlink Bypass</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:radial-gradient(circle at 50% 0%,#1a1a2e 0%,#0a0a14 100%);font-family:'Segoe UI',Roboto,system-ui,sans-serif;color:#e0e0f0;display:flex;align-items:center;justify-content:center;padding:20px}
+  .container{width:100%;max-width:520px;background:rgba(20,20,32,.85);backdrop-filter:blur(12px);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:24px;box-shadow:0 0 40px rgba(255,215,0,.05),0 10px 40px rgba(0,0,0,.6)}
+  .title{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid rgba(255,215,0,.15)}
+  .title h1{font-size:15px;font-weight:700;color:#ffd700;letter-spacing:1.5px;text-transform:uppercase}
+  .dot{width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 10px #00e676;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .label{font-size:11px;font-weight:600;color:#8888a8;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:block}
+  .input-wrap{position:relative;margin-bottom:18px}
+  input[type=url]{width:100%;padding:12px 14px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:13px;font-family:Consolas,monospace;outline:none;transition:border-color .2s}
+  input[type=url]:focus{border-color:#ffd700}
+  input::placeholder{color:#555570}
+  .services{margin-bottom:18px}
+  .svc-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.06);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .15s}
+  .svc-item:hover{border-color:rgba(255,215,0,.3)}
+  .svc-item.active{border-color:rgba(0,230,118,.5);background:rgba(0,230,118,.05)}
+  .svc-name{font-size:13px;font-weight:500;color:#c8c8e0;font-family:Consolas,monospace}
+  .toggle{width:42px;height:22px;border-radius:11px;background:#33334a;position:relative;transition:background .2s;flex-shrink:0}
+  .toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+  .svc-item.active .toggle{background:#00c853}
+  .svc-item.active .toggle::after{transform:translateX(20px)}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  button{padding:12px;border:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s;font-family:inherit}
+  .btn-primary{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#1a1a2e;grid-column:span 2}
+  .btn-primary:hover{box-shadow:0 0 20px rgba(255,215,0,.4)}
+  .btn-secondary{background:rgba(255,255,255,.06);color:#c8c8e0;border:1px solid rgba(255,255,255,.1)}
+  .btn-secondary:hover{background:rgba(255,255,255,.12)}
+  .output{margin-top:16px;padding:12px;background:rgba(0,0,0,.5);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-family:Consolas,monospace;font-size:11px;color:#00e676;word-break:break-all;max-height:160px;overflow-y:auto;display:none;white-space:pre-wrap;line-height:1.5}
+  .output.show{display:block}
+  .output .hint{color:#666680;display:block;margin-top:6px}
+  .footer-note{margin-top:14px;font-size:10px;color:#555570;text-align:center;font-family:Consolas,monospace;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title"><div class="dot"></div><h1>Universal Shortlink Bypass</h1></div>
+
+  <label class="label">Dán link shortlink</label>
+  <div class="input-wrap">
+    <input type="url" id="linkInput" placeholder="https://link4m.com/xxxxx">
+  </div>
+
+  <label class="label">Chọn dịch vụ cần bypass</label>
+  <div class="services" id="services">
+    <div class="svc-item active" data-domain="link4m.com,link4m.net,link4m.co,link4m.vn">
+      <span class="svc-name">link4m</span><div class="toggle"></div>
+    </div>
+    <div class="svc-item active" data-domain="ontop.pro,ontop.vn,ontop.link">
+      <span class="svc-name">ontop</span><div class="toggle"></div>
+    </div>
+    <div class="svc-item active" data-domain="layma.net,layma.vn,layma.co">
+      <span class="svc-name">layma</span><div class="toggle"></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="buildBtn">Tạo Bookmarklet</button>
+    <button class="btn-secondary" id="copyBtn">Copy</button>
+    <button class="btn-secondary" id="openBtn">Mở Link</button>
+  </div>
+
+  <div class="output" id="output"></div>
+  <div class="footer-note">Bookmarklet chỉ chạy trên trang shortlink khi bạn bấm vào bookmark.</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var selected=[],builtBookmarklet='';
+
+function readSelected(){
+  var items=document.querySelectorAll('.svc-item.active');
+  selected=[];
+  for(var i=0;i<items.length;i++){selected.push(items[i].getAttribute('data-domain'));}
+  return selected;
+}
+var svcItems=document.querySelectorAll('.svc-item');
+for(var s=0;s<svcItems.length;s++){
+  svcItems[s].addEventListener('click',function(){this.classList.toggle('active');readSelected();});
+}
+readSelected();
+
+function buildBookmarklet(){
+  var domains=selected.join(',');
+  if(!domains){return null;}
+  var code=
+    'javascript:(function(){'+
+    'var D="'+domains+'".split(",");'+
+    'var A=["googleadservices.com","googlesyndication.com","doubleclick.net","facebook.com","fbcdn.net","tiktok.com","cloudflare.com","gstatic.com","google.com","youtube.com"];'+
+    'var K=["url","link","dest","destination","redirect","target","href","u","r"];'+
+    'var T=["tiếp tục","continue","bỏ qua","skip","get link","lấy link","đi tiếp","click to continue","xác nhận","confirm","go to link","truy cập","access","download","tải xuống","next","tiếp"];'+
+    'function H(s){try{var h=new URL(s).hostname.replace(/^www\\./,"");for(var i=0;i<D.length;i++){if(h===D[i]||h.endsWith("."+D[i]))return true}}catch(e){}return false}'+
+    'function Ad(s){try{var h=new URL(s).hostname.toLowerCase();for(var i=0;i<A.length;i++){if(h===A[i]||h.endsWith("."+A[i]))return true}}catch(e){return true}return false}'+
+    'function N(s){if(!s)return null;s=String(s).trim().replace(/^["\\\'`]+|["\\\'`]+$/g,"").replace(/\\\\\\//g,"/").replace(/&amp;/g,"&");try{s=decodeURIComponent(s)}catch(e){}if(!/^https?:\\/\\//i.test(s))return null;if(H(s)||Ad(s))return null;return s}'+
+    'function F(){'+
+      'var m=document.querySelectorAll("meta[http-equiv=\\"refresh\\" i],meta[content*=\\"url=\\" i]");'+
+      'for(var i=0;i<m.length;i++){var c=m[i].getAttribute("content")||"";var x=c.match(/url\\s*=\\s*([^;]+)/i);var u=N(x?x[1]:c);if(u)return u}'+
+      'var e=document.querySelectorAll("input[type=\\"hidden\\"],input[name],input[id],textarea");'+
+      'for(var j=0;j<e.length;j++){var k=(e[j].name||e[j].id||"").toLowerCase();for(var q=0;q<K.length;q++){if(k.indexOf(K[q])>-1){var v=N(e[j].value);if(v)return v}}}'+
+      'var at=["data-url","data-link","data-href","data-redirect","data-destination","data-target","href","action"];'+
+      'var all=document.querySelectorAll("*");'+
+      'for(var p=0;p<all.length;p++){for(var z=0;z<at.length;z++){var w=N(all[p].getAttribute&&all[p].getAttribute(at[z]));if(w)return w}}'+
+      'var sc=document.querySelectorAll("script:not([src])");'+
+      'for(var y=0;y<sc.length;y++){var re=/https?:\\/\\/[^\\s"\\\'`<>\\\\]+/gi;var mm;while((mm=re.exec(sc[y].textContent||""))){var r=N(mm[0]);if(r)return r}}'+
+      'var nm=["url","link","dest","destination","redirect","target","next"];'+
+      'for(var n=0;n<nm.length;n++){try{var g=N(window[nm[n]]);if(g)return g}catch(e){}}'+
+      'return null}'+
+    'function C(){var els=document.querySelectorAll("a,button,input[type=\\"button\\"],input[type=\\"submit\\"],[role=\\"button\\"]");for(var i=0;i<els.length;i++){var t=((els[i].innerText||els[i].value||els[i].textContent||"")+" "+(els[i].id||"")+" "+(els[i].className||"")).toLowerCase();for(var j=0;j<T.length;j++){if(t.indexOf(T[j])>-1){try{els[i].click()}catch(e){}break}}}}'+
+    'var dest=F();if(dest){location.replace(dest);return}'+
+    'var b=document.createElement("button");b.textContent="BYPASS";b.style.cssText="position:fixed;right:12px;bottom:12px;z-index:2147483647;background:#111;color:#0f0;border:1px solid #0f0;padding:10px 14px;font:bold 14px monospace;border-radius:6px;cursor:pointer";'+
+    'b.onclick=function(){var d=F();if(d)location.replace(d);else C()};'+
+    'document.documentElement.appendChild(b);'+
+    'var i=0;var t=setInterval(function(){i++;var d=F();if(d){clearInterval(t);location.replace(d);return}C();if(i>=60)clearInterval(t)},500);'+
+    'window.addEventListener("load",function(){var d=F();if(d)location.replace(d);C()})'+
+    '})();';
+  return code;
+}
+
+var output=document.getElementById('output');
+var linkInput=document.getElementById('linkInput');
+
+document.getElementById('buildBtn').addEventListener('click',function(){
+  var bm=buildBookmarklet();
+  if(!bm){
+    output.textContent='LỖI: chọn ít nhất một dịch vụ.';
+    output.classList.add('show');
+    return;
+  }
+  builtBookmarklet=bm;
+  output.textContent='';
+  var span=document.createElement('span');
+  span.textContent=bm;
+  output.appendChild(span);
+  var hint=document.createElement('span');
+  hint.className='hint';
+  hint.textContent='\n\n[Hướng dẫn] Tạo bookmark mới → dán toàn bộ chuỗi trên vào URL của bookmark → đặt tên BYPASS → mở trang shortlink → bấm bookmark.';
+  output.appendChild(hint);
+  output.classList.add('show');
+});
+
+document.getElementById('copyBtn').addEventListener('click',function(){
+  if(!builtBookmarklet){document.getElementById('buildBtn').click();}
+  if(!builtBookmarklet)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(builtBookmarklet).then(function(){
+      output.classList.add('show');
+      var old=output.innerHTML;
+      output.innerHTML='<span style="color:#00e676">ĐÃ COPY BOOKMARKLET VÀO CLIPBOARD</span>';
+      setTimeout(function(){output.innerHTML=old;},1500);
+    });
+  }else{
+    var ta=document.createElement('textarea');
+    ta.value=builtBookmarklet;
+    document.body.appendChild(ta);
+    ta.select();
+    try{document.execCommand('copy');}catch(e){}
+    document.body.removeChild(ta);
+    output.classList.add('show');
+    output.innerHTML='<span style="color:#00e676">ĐÃ COPY BOOKMARKLET</span>';
+  }
+});
+
+document.getElementById('openBtn').addEventListener('click',function(){
+  var val=linkInput.value.trim();
+  if(!val){
+    output.textContent='LỖI: dán link shortlink vào ô nhập trước.';
+    output.classList.add('show');
+    return;
+  }
+  if(!/^https?:\/\//i.test(val))val='https://'+val;
+  var host='';
+  try{host=new URL(val).hostname.replace(/^www\./,'');}catch(e){}
+  var matched=false;
+  for(var i=0;i<selected.length;i++){
+    var group=selected[i].split(',');
+    for(var j=0;j<group.length;j++){
+      if(host===group[j]||host.endsWith('.'+group[j])){matched=true;break;}
+    }
+    if(matched)break;
+  }
+  if(!matched){
+    output.textContent='CẢNH BÁO: host "'+host+'" không thuộc dịch vụ đã chọn. Script vẫn mở nhưng có thể không khớp.';
+    output.classList.add('show');
+  }
+  window.open(val,'_blank');
+});
+})();
+</script>
+</body>
+  </html>
